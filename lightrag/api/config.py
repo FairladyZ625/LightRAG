@@ -8,6 +8,7 @@ import logging
 from dotenv import load_dotenv
 from lightrag.utils import get_env_value
 from lightrag.llm.binding_options import OllamaEmbeddingOptions, OllamaLLMOptions
+from lightrag.base import OllamaServerInfos
 import sys
 
 from lightrag.constants import (
@@ -30,48 +31,13 @@ from lightrag.constants import (
     DEFAULT_EMBEDDING_BATCH_NUM,
     DEFAULT_OLLAMA_MODEL_NAME,
     DEFAULT_OLLAMA_MODEL_TAG,
-    DEFAULT_OLLAMA_MODEL_SIZE,
-    DEFAULT_OLLAMA_CREATED_AT,
-    DEFAULT_OLLAMA_DIGEST,
+    DEFAULT_TEMPERATURE,
 )
 
 # use the .env that is inside the current folder
 # allows to use different .env file for each lightrag instance
 # the OS environment variables take precedence over the .env file
 load_dotenv(dotenv_path=".env", override=False)
-
-
-class OllamaServerInfos:
-    def __init__(self, name=None, tag=None):
-        self._lightrag_name = name or os.getenv(
-            "OLLAMA_EMULATING_MODEL_NAME", DEFAULT_OLLAMA_MODEL_NAME
-        )
-        self._lightrag_tag = tag or os.getenv(
-            "OLLAMA_EMULATING_MODEL_TAG", DEFAULT_OLLAMA_MODEL_TAG
-        )
-        self.LIGHTRAG_SIZE = DEFAULT_OLLAMA_MODEL_SIZE
-        self.LIGHTRAG_CREATED_AT = DEFAULT_OLLAMA_CREATED_AT
-        self.LIGHTRAG_DIGEST = DEFAULT_OLLAMA_DIGEST
-
-    @property
-    def LIGHTRAG_NAME(self):
-        return self._lightrag_name
-
-    @LIGHTRAG_NAME.setter
-    def LIGHTRAG_NAME(self, value):
-        self._lightrag_name = value
-
-    @property
-    def LIGHTRAG_TAG(self):
-        return self._lightrag_tag
-
-    @LIGHTRAG_TAG.setter
-    def LIGHTRAG_TAG(self, value):
-        self._lightrag_tag = value
-
-    @property
-    def LIGHTRAG_MODEL(self):
-        return f"{self._lightrag_name}:{self._lightrag_tag}"
 
 
 ollama_server_infos = OllamaServerInfos()
@@ -332,7 +298,7 @@ def parse_args() -> argparse.Namespace:
     args.enable_llm_cache = get_env_value("ENABLE_LLM_CACHE", True, bool)
 
     # Inject LLM temperature configuration
-    args.temperature = get_env_value("TEMPERATURE", 0.5, float)
+    args.temperature = get_env_value("TEMPERATURE", DEFAULT_TEMPERATURE, float)
 
     # Select Document loading tool (DOCLING, DEFAULT)
     args.document_loading_engine = get_env_value("DOCUMENT_LOADING_ENGINE", "DEFAULT")

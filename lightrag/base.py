@@ -23,12 +23,50 @@ from .constants import (
     DEFAULT_MAX_TOTAL_TOKENS,
     DEFAULT_HISTORY_TURNS,
     DEFAULT_ENABLE_RERANK,
+    DEFAULT_OLLAMA_MODEL_NAME,
+    DEFAULT_OLLAMA_MODEL_TAG,
+    DEFAULT_OLLAMA_MODEL_SIZE,
+    DEFAULT_OLLAMA_CREATED_AT,
+    DEFAULT_OLLAMA_DIGEST,
 )
 
 # use the .env that is inside the current folder
 # allows to use different .env file for each lightrag instance
 # the OS environment variables take precedence over the .env file
 load_dotenv(dotenv_path=".env", override=False)
+
+
+class OllamaServerInfos:
+    def __init__(self, name=None, tag=None):
+        self._lightrag_name = name or os.getenv(
+            "OLLAMA_EMULATING_MODEL_NAME", DEFAULT_OLLAMA_MODEL_NAME
+        )
+        self._lightrag_tag = tag or os.getenv(
+            "OLLAMA_EMULATING_MODEL_TAG", DEFAULT_OLLAMA_MODEL_TAG
+        )
+        self.LIGHTRAG_SIZE = DEFAULT_OLLAMA_MODEL_SIZE
+        self.LIGHTRAG_CREATED_AT = DEFAULT_OLLAMA_CREATED_AT
+        self.LIGHTRAG_DIGEST = DEFAULT_OLLAMA_DIGEST
+
+    @property
+    def LIGHTRAG_NAME(self):
+        return self._lightrag_name
+
+    @LIGHTRAG_NAME.setter
+    def LIGHTRAG_NAME(self, value):
+        self._lightrag_name = value
+
+    @property
+    def LIGHTRAG_TAG(self):
+        return self._lightrag_tag
+
+    @LIGHTRAG_TAG.setter
+    def LIGHTRAG_TAG(self, value):
+        self._lightrag_tag = value
+
+    @property
+    def LIGHTRAG_MODEL(self):
+        return f"{self._lightrag_name}:{self._lightrag_tag}"
 
 
 class TextChunkSchema(TypedDict):
@@ -100,6 +138,7 @@ class QueryParam:
     Format: [{"role": "user/assistant", "content": "message"}].
     """
 
+    # Deprecated: history message have negtive effect on query performance
     history_turns: int = int(os.getenv("HISTORY_TURNS", str(DEFAULT_HISTORY_TURNS)))
     """Number of complete conversation turns (user-assistant pairs) to consider in the response context."""
 
@@ -672,6 +711,36 @@ class DocStatusStorage(BaseKVStorage, ABC):
         self, track_id: str
     ) -> dict[str, DocProcessingStatus]:
         """Get all documents with a specific track_id"""
+
+    @abstractmethod
+    async def get_docs_paginated(
+        self,
+        status_filter: DocStatus | None = None,
+        page: int = 1,
+        page_size: int = 50,
+        sort_field: str = "updated_at",
+        sort_direction: str = "desc",
+    ) -> tuple[list[tuple[str, DocProcessingStatus]], int]:
+        """Get documents with pagination support
+
+        Args:
+            status_filter: Filter by document status, None for all statuses
+            page: Page number (1-based)
+            page_size: Number of documents per page (10-200)
+            sort_field: Field to sort by ('created_at', 'updated_at', 'id')
+            sort_direction: Sort direction ('asc' or 'desc')
+
+        Returns:
+            Tuple of (list of (doc_id, DocProcessingStatus) tuples, total_count)
+        """
+
+    @abstractmethod
+    async def get_all_status_counts(self) -> dict[str, int]:
+        """Get counts of documents in each status for all documents
+
+        Returns:
+            Dictionary mapping status names to counts
+        """
 
     async def drop_cache_by_modes(self, modes: list[str] | None = None) -> bool:
         """Drop cache is not supported for Doc Status storage"""
